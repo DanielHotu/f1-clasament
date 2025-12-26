@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 2025 Liquid Glass - Live Sync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #000000;
+            --text-main: #ffffff;
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-surface: rgba(255, 255, 255, 0.03);
+            --glass-shine: rgba(255, 255, 255, 0.1);
+            
+            /* Team Colors */
+            --mclaren: #FF8000; --ferrari: #ff0019; --redbull: #3671C6;
+            --mercedes: #00d2be; --aston: #006f62; --alpine: #0093cc;
+            --williams: #005aff; --haas: #ffffff; --sauber: #52e252; --rb: #1633cc;
+        }
+
+        body {
+            background-color: var(--bg-deep); color: var(--text-main); font-family: 'Outfit', sans-serif;
+            margin: 0; min-height: 100vh; display: flex; justify-content: center; overflow-x: hidden;
+        }
+
+        /* --- OPTIMIZED LIQUID BACKGROUND --- */
+        .liquid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; background: #050505; transform: translateZ(0); }
+        .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.6; will-change: transform; transform: translate3d(0,0,0); animation: float 20s infinite ease-in-out; }
+        .orb-1 { width: 50vw; height: 50vw; background: #220033; top: -10%; left: -10%; animation-delay: 0s; }
+        .orb-2 { width: 40vw; height: 40vw; background: #001a33; bottom: -10%; right: -10%; animation-delay: -5s; }
+        .orb-3 { width: 30vw; height: 30vw; background: #330000; top: 40%; left: 40%; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            33% { transform: translate3d(30px, -50px, 0) scale(1.1); }
+            66% { transform: translate3d(-20px, 20px, 0) scale(0.9); }
+            100% { transform: translate3d(0, 0, 0) scale(1); }
+        }
+
+        /* --- LAYOUT --- */
+        .container { width: 100%; max-width: 1200px; padding: 50px 20px; z-index: 1; }
+        header { text-align: center; margin-bottom: 60px; }
+        h1 { font-family: 'Orbitron', sans-serif; font-size: 4rem; font-weight: 900; margin: 0; background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); }
+        
+        .drivers-list { display: flex; flex-direction: column; gap: 20px; }
+        @media (min-width: 900px) { .drivers-list { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; } }
+
+        /* --- LIQUID GLASS CARDS --- */
+        .card {
+            display: flex; align-items: center; justify-content: space-between; padding: 20px 30px; border-radius: 24px;
+            background: var(--glass-surface); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid var(--glass-border); border-top: 1px solid rgba(255,255,255,0.4); border-left: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; overflow: hidden; transform: translateZ(0);
+        }
+        .card::before { content: ''; position: absolute; top: 0; left: -50%; width: 100%; height: 100%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent); transform: skewX(-25deg); transition: 0.5s; pointer-events: none; }
+        .card:hover { transform: scale(1.02) translateY(-5px); border-color: rgba(255,255,255,0.5); box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 10; }
+        .card:hover::before { left: 150%; transition: 0.7s; }
+
+        /* Content Styling */
+        .card-left { display: flex; align-items: center; gap: 25px; }
+        .rank { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: rgba(255,255,255,0.4); font-weight: 700; width: 30px; }
+        .team-logo { width: 55px; height: 55px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); transition: 0.3s; }
+        .driver-info { display: flex; flex-direction: column; }
+        .name { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.5px; }
+        .team { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.7; margin-top: 4px; }
+
+        /* --- INPUT POINTS STYLING --- */
+        .points-input {
+            font-family: 'Orbitron', sans-serif; font-size: 2.5rem; font-weight: 900; width: 100px;
+            background: transparent; border: none; text-align: right; outline: none;
+            color: #ccc; background: -webkit-linear-gradient(#fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            opacity: 0.3; transition: 0.3s; cursor: text;
+        }
+        .points-input::-webkit-outer-spin-button, .points-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .points-input { -moz-appearance: textfield; }
+        .points-input:focus, .card:hover .points-input { opacity: 1; transform: scale(1.1); }
+
+        /* --- TEAM SPECIFIC LIQUID EFFECTS --- */
+        .card[data-team="mclaren"]:hover { box-shadow: 0 0 30px rgba(255, 128, 0, 0.2), inset 0 0 20px rgba(255, 128, 0, 0.1); border-color: var(--mclaren); } .card[data-team="mclaren"] .name { text-shadow: 0 0 20px var(--mclaren); }
+        .card[data-team="ferrari"]:hover { box-shadow: 0 0 30px rgba(255, 0, 25, 0.2), inset 0 0 20px rgba(255, 0, 25, 0.1); border-color: var(--ferrari); } .card[data-team="ferrari"] .name { text-shadow: 0 0 20px var(--ferrari); }
+        .card[data-team="redbull"]:hover { box-shadow: 0 0 30px rgba(54, 113, 198, 0.2), inset 0 0 20px rgba(54, 113, 198, 0.1); border-color: var(--redbull); } .card[data-team="redbull"] .name { text-shadow: 0 0 20px var(--redbull); }
+        .card[data-team="mercedes"]:hover { box-shadow: 0 0 30px rgba(0, 210, 190, 0.2), inset 0 0 20px rgba(0, 210, 190, 0.1); border-color: var(--mercedes); } .card[data-team="mercedes"] .name { text-shadow: 0 0 20px var(--mercedes); }
+        .card[data-team="aston"]:hover { box-shadow: 0 0 30px rgba(0, 111, 98, 0.2), inset 0 0 20px rgba(0, 111, 98, 0.1); border-color: var(--aston); } .card[data-team="aston"] .name { text-shadow: 0 0 20px var(--aston); }
+        .card[data-team="alpine"]:hover { box-shadow: 0 0 30px rgba(0, 147, 204, 0.2), inset 0 0 20px rgba(0, 147, 204, 0.1); border-color: var(--alpine); } .card[data-team="alpine"] .name { text-shadow: 0 0 20px var(--alpine); }
+        .card[data-team="williams"]:hover { box-shadow: 0 0 30px rgba(0, 90, 255, 0.2), inset 0 0 20px rgba(0, 90, 255, 0.1); border-color: var(--williams); } .card[data-team="williams"] .name { text-shadow: 0 0 20px var(--williams); }
+        .card[data-team="haas"]:hover { box-shadow: 0 0 30px rgba(255, 255, 255, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1); border-color: var(--haas); } .card[data-team="haas"] .name { text-shadow: 0 0 20px var(--haas); }
+        .card[data-team="rb"]:hover { box-shadow: 0 0 30px rgba(22, 51, 204, 0.2), inset 0 0 20px rgba(22, 51, 204, 0.1); border-color: var(--rb); } .card[data-team="rb"] .name { text-shadow: 0 0 20px var(--rb); }
+        .card[data-team="sauber"]:hover { box-shadow: 0 0 30px rgba(82, 226, 82, 0.2), inset 0 0 20px rgba(82, 226, 82, 0.1); border-color: var(--sauber); } .card[data-team="sauber"] .name { text-shadow: 0 0 20px var(--sauber); }
+    </style>
+</head>
+<body>
+
+    <div class="liquid-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>F1 2025</h1>
+            <p style="text-transform: uppercase; letter-spacing: 3px; opacity: 0.6; margin-top: 10px;">Live Points Ranking</p>
+        </header>
+
+        <div class="drivers-list" id="driversList">
+            
+            <div class="card" data-team="mclaren">
+                <div class="card-left">
+                    <span class="rank">01</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/en/6/66/McLaren_Racing_logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Lando Norris</span>
+                        <span class="team">McLaren</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="norris" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="mclaren">
+                <div class="card-left">
+                    <span class="rank">02</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/en/6/66/McLaren_Racing_logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Oscar Piastri</span>
+                        <span class="team">McLaren</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="piastri" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="ferrari">
+                <div class="card-left">
+                    <span class="rank">03</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/de/c/c0/Scuderia_Ferrari_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Charles Leclerc</span>
+                        <span class="team">Ferrari</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="leclerc" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="ferrari">
+                <div class="card-left">
+                    <span class="rank">04</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/de/c/c0/Scuderia_Ferrari_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Alex</span>
+                        <span class="team">Ferrari</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="alex" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="redbull">
+                <div class="card-left">
+                    <span class="rank">05</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453928012650385479/pngfind.com-racing-png-3098373.png?ex=694fe43a&is=694e92ba&hm=6fd7850209ec073136eacea6027485209fdb60d5a4f4c26d3cff99d192b58d14&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Max Verstappen</span>
+                        <span class="team">Red Bull Racing</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="verstappen" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="redbull">
+                <div class="card-left">
+                    <span class="rank">06</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453928012650385479/pngfind.com-racing-png-3098373.png?ex=694fe43a&is=694e92ba&hm=6fd7850209ec073136eacea6027485209fdb60d5a4f4c26d3cff99d192b58d14&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Andrei</span>
+                        <span class="team">Red Bull Racing</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="andrei" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="mercedes">
+                <div class="card-left">
+                    <span class="rank">07</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Mercedes_AMG_Petronas_F1_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">George Russell</span>
+                        <span class="team">Mercedes-AMG</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="russell" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="mercedes">
+                <div class="card-left">
+                    <span class="rank">08</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Mercedes_AMG_Petronas_F1_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Kimi Antonelli</span>
+                        <span class="team">Mercedes-AMG</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="antonelli" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="williams">
+                <div class="card-left">
+                    <span class="rank">09</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453928247556571288/Logo_Williams_F1.png?ex=694fe472&is=694e92f2&hm=478afc230f0a7ca0c51ca5027ba654fd50b1dc1732dbc54b4aeda9d4c857266a&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Carlos Sainz</span>
+                        <span class="team">Williams Racing</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="sainz" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="williams">
+                <div class="card-left">
+                    <span class="rank">10</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453928247556571288/Logo_Williams_F1.png?ex=694fe472&is=694e92f2&hm=478afc230f0a7ca0c51ca5027ba654fd50b1dc1732dbc54b4aeda9d4c857266a&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Dani</span>
+                        <span class="team">Williams Racing</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="dani" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="aston">
+                <div class="card-left">
+                    <span class="rank">11</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453929612991266856/pngfind.com-aston-martin-logo-png-1336044.png?ex=694fe5b8&is=694e9438&hm=26552a4d8767fbc3a77b7d43565217bfc9b766eff7a277ac01579148ffe43523&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Fernando Alonso</span>
+                        <span class="team">Aston Martin</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="alonso" value="0" placeholder="Pts">
+            </div>
+
+             <div class="card" data-team="aston">
+                <div class="card-left">
+                    <span class="rank">12</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453929612991266856/pngfind.com-aston-martin-logo-png-1336044.png?ex=694fe5b8&is=694e9438&hm=26552a4d8767fbc3a77b7d43565217bfc9b766eff7a277ac01579148ffe43523&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Lance Stroll</span>
+                        <span class="team">Aston Martin</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="stroll" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="alpine">
+                <div class="card-left">
+                    <span class="rank">13</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Alpine_F1_Team_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Pierre Gasly</span>
+                        <span class="team">Alpine</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="gasly" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="alpine">
+                <div class="card-left">
+                    <span class="rank">14</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Alpine_F1_Team_Logo.svg" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Franco Colapinto</span>
+                        <span class="team">Alpine</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="colapinto" value="0" placeholder="Pts">
+            </div>
+            
+             <div class="card" data-team="rb">
+                <div class="card-left">
+                    <span class="rank">15</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453930680575856670/latest.png?ex=694fe6b6&is=694e9536&hm=46170a0579db0f2b6776002a865de41aa799fffedfb52e50102901f2dd9c2e6e&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Liam Lawson</span>
+                        <span class="team">Visa Cash App RB</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="lawson" value="0" placeholder="Pts">
+            </div>
+
+            <div class="card" data-team="rb">
+                <div class="card-left">
+                    <span class="rank">16</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453930680575856670/latest.png?ex=694fe6b6&is=694e9536&hm=46170a0579db0f2b6776002a865de41aa799fffedfb52e50102901f2dd9c2e6e&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Isack Hadjar</span>
+                        <span class="team">Visa Cash App RB</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="hadjar" value="0" placeholder="Pts">
+            </div>
+
+             <div class="card" data-team="haas">
+                <div class="card-left">
+                    <span class="rank">17</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453930200160010527/haas-f1-team-logo-1.png?ex=694fe644&is=694e94c4&hm=0cda9fd84daba0bb6308b8caa0fadfde9270944a3cdebfe16d275ccae09fafd3&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Esteban Ocon</span>
+                        <span class="team">Haas</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="ocon" value="0" placeholder="Pts">
+            </div>
+
+             <div class="card" data-team="haas">
+                <div class="card-left">
+                    <span class="rank">18</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453930200160010527/haas-f1-team-logo-1.png?ex=694fe644&is=694e94c4&hm=0cda9fd84daba0bb6308b8caa0fadfde9270944a3cdebfe16d275ccae09fafd3&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Oliver Bearman</span>
+                        <span class="team">Haas</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="bearman" value="0" placeholder="Pts">
+            </div>
+
+             <div class="card" data-team="sauber">
+                <div class="card-left">
+                    <span class="rank">19</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453929429792325904/Kick-Logo-PNG.png?ex=694fe58c&is=694e940c&hm=fc4f3b427f1345ca44fe2811ccfd41908e8f3ac1077a8c116e22534721680e4c&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Nico Hulkenberg</span>
+                        <span class="team">Kick Sauber</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="hulkenberg" value="222" placeholder="Pts">
+            </div>
+
+             <div class="card" data-team="sauber">
+                <div class="card-left">
+                    <span class="rank">20</span>
+                    <img src="https://cdn.discordapp.com/attachments/1004723963089395714/1453929429792325904/Kick-Logo-PNG.png?ex=694fe58c&is=694e940c&hm=fc4f3b427f1345ca44fe2811ccfd41908e8f3ac1077a8c116e22534721680e4c&" class="team-logo">
+                    <div class="driver-info">
+                        <span class="name">Gabriel Bortoleto</span>
+                        <span class="team">Kick Sauber</span>
+                    </div>
+                </div>
+                <input type="number" class="points-input" id="bortoleto" value="0" placeholder="Pts">
+            </div>
+
+        </div> 
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // ==========================================
+        // PASTE AICI DATELE TALE DE LA FIREBASE
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-_Z4V_GRk-LOtLdSKW2eOvIR8v2Nrhis",
+            authDomain: "f1-clasament.firebaseapp.com",
+            databaseURL: "https://f1-clasament-default-rtdb.europe-west1.firebasedatabase.app/",
+            projectId: "f1-clasament",
+            storageBucket: "f1-clasament.firebasestorage.app",
+            messagingSenderId: "1077698442598",
+            appId: "1:1077698442598:web:22d6032e51c5ae7b1d84a7"
+        };
+        // ==========================================
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const inputs = document.querySelectorAll('.points-input');
+        const list = document.getElementById('driversList');
+
+        // 1. Ascultăm modificările din baza de date (când prietenul schimbă punctele)
+        const scoresRef = ref(db, 'f1_scores_2025');
+        
+        onValue(scoresRef, (snapshot) => {
+            const data = snapshot.val();
+            
+            if (data) {
+                // Actualizăm input-urile locale cu datele din server
+                inputs.forEach(input => {
+                    const driverId = input.id;
+                    if (data[driverId] !== undefined) {
+                        input.value = data[driverId];
+                    }
+                });
+                // Sortăm clasamentul
+                sortDrivers();
+            }
+        });
+
+        // 2. Trimitem modificările tale către server
+        inputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                const driverId = e.target.id;
+                const newValue = parseInt(e.target.value) || 0;
+
+                // Salvăm în DB
+                set(ref(db, 'f1_scores_2025/' + driverId), newValue);
+            });
+        });
+
+        // 3. Funcția de sortare vizuală
+        function sortDrivers() {
+            const cards = Array.from(list.querySelectorAll('.card'));
+            
+            cards.sort((a, b) => {
+                const pointsA = parseInt(a.querySelector('.points-input').value) || 0;
+                const pointsB = parseInt(b.querySelector('.points-input').value) || 0;
+                return pointsB - pointsA;
+            });
+
+            cards.forEach((card, index) => {
+                list.appendChild(card);
+                const rankSpan = card.querySelector('.rank');
+                rankSpan.textContent = (index + 1).toString().padStart(2, '0');
+            });
+        }
+    </script>
+
+</body>
+</html>
