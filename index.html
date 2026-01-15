@@ -466,7 +466,7 @@
         </div> 
     </div>
 
-    <script type="module">
+<script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -515,30 +515,40 @@
                 // Actualizăm input-urile locale cu datele din server
                 inputs.forEach(input => {
                     const driverId = input.id;
-                    if (data[driverId] !== undefined) {
+                    // FIX: Nu actualizăm valoarea dacă utilizatorul scrie chiar acum în acel câmp
+                    // Asta previne cursorul să sară dacă primești update-uri în timp real
+                    if (document.activeElement !== input && data[driverId] !== undefined) {
                         input.value = data[driverId];
                     }
                 });
-                // Sortăm și actualizăm totul
-                updateUI();
+                // Aici putem sorta liniștiți pentru că update-ul vine de la server
+                updateUI(true); 
             }
         });
 
-        // 2. Trimitem modificările către server
+        // 2. Trimitem modificările către server și gestionăm tastarea
         inputs.forEach(input => {
-            input.addEventListener('input', (e) => { // 'input' e mai rapid ca 'change' pentru live update local
-                updateUI(); // update vizual imediat
+            // FIX: La 'input' (tastare) facem doar calcule, NU sortăm
+            input.addEventListener('input', (e) => { 
+                updateConstructors(); // Doar actualizăm totalurile echipelor vizual
+                // NU apelăm sortDrivers() aici!
             });
 
+            // La 'change' (când dai enter sau click în afară) salvăm în baza de date
             input.addEventListener('change', (e) => {
                 const driverId = e.target.id;
                 const newValue = parseInt(e.target.value) || 0;
                 set(ref(db, 'f1_scores_2025/' + driverId), newValue);
+                // Sortarea se va face automat când Firebase confirmă salvarea (prin onValue)
             });
         });
 
-        function updateUI() {
-            sortDrivers();
+        // Funcția principală de update
+        // Parametrul 'shouldSort' decide dacă mutăm elementele sau nu
+        function updateUI(shouldSort = false) {
+            if (shouldSort) {
+                sortDrivers();
+            }
             updateConstructors();
         }
 
@@ -552,14 +562,16 @@
                 return pointsB - pointsA;
             });
 
+            // AppendChild mută elementul. Dacă faci asta în timp ce scrii, pierzi focusul.
             cards.forEach((card, index) => {
                 driversList.appendChild(card);
                 const rankSpan = card.querySelector('.rank');
-                rankSpan.textContent = (index + 1).toString().padStart(2, '0');
+                // Actualizăm rank-ul doar dacă există elementul
+                if(rankSpan) rankSpan.textContent = (index + 1).toString().padStart(2, '0');
             });
         }
 
-        // 4. Calcul și Sortare Constructori (NOU)
+        // 4. Calcul și Sortare Constructori
         function updateConstructors() {
             const teamCards = Array.from(constructorsList.querySelectorAll('.card'));
             
@@ -579,29 +591,31 @@
                 }
                 
                 // Actualizăm textul în cardul echipei
-                card.querySelector('.points-display').textContent = totalPoints;
+                const display = card.querySelector('.points-display');
+                if(display) display.textContent = totalPoints;
+                
                 // Salvăm valoarea pe element pentru sortare
                 card.dataset.points = totalPoints;
             });
 
-            // Sortăm echipele
+            // Sortăm echipele (aici e ok să sortăm mai des, că nu scriem direct în ele)
+            // Dar ideal e să se sorteze doar la final
+            const currentFocus = document.activeElement;
+            
+            // Sortăm vizual constructorii doar dacă nu suntem în mijlocul tastării sau 
+            // putem sorta oricând constructorii pentru că nu scriem în ei
             teamCards.sort((a, b) => {
                 const pointsA = parseInt(a.dataset.points) || 0;
                 const pointsB = parseInt(b.dataset.points) || 0;
                 return pointsB - pointsA;
             });
 
-            // Reordonăm în DOM
             teamCards.forEach((card, index) => {
                 constructorsList.appendChild(card);
-                // Opțional: Poți actualiza și rank-ul echipei dacă vrei
-                /*
-                const rankSpan = card.querySelector('.rank');
-                if(rankSpan) rankSpan.textContent = (index + 1).toString().padStart(2, '0');
-                */
             });
         }
     </script>
 
 </body>
 </html>
+
